@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Äventyrsupplevelser Bygg</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f5ee;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #333;
+      color: white;
+      padding: 10px;
+      text-align: center;
+      font-size: 22px;
+    }
+    main {
+      padding: 20px;
+    }
+    .section {
+      margin-bottom: 30px;
+    }
+    .item {
+      background: white;
+      padding: 10px;
+      margin: 5px 0;
+      border: 2px solid #333;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .button {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      margin-top: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .button:hover {
+      background: #555;
+    }
+    .hidden {
+      display: none;
+    }
+    select, input, textarea {
+      width: 100%;
+      margin-top: 5px;
+      margin-bottom: 10px;
+      padding: 8px;
+      border: 2px solid #333;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<header>Äventyrsupplevelser Bygg</header>
+
+<main id="app">
+  <!-- Dynamiskt innehåll här -->
+</main>
+
+<script>
+let data = JSON.parse(localStorage.getItem('aventyrsBygg')) || { platser: [] };
+let currentPlats = null;
+let currentBana = null;
+
+function spara() {
+  localStorage.setItem('aventyrsBygg', JSON.stringify(data));
+}
+
+function visaPlatser() {
+  const app = document.getElementById('app');
+  currentPlats = null;
+  currentBana = null;
+  app.innerHTML = '<h2>Platser</h2>';
+
+  data.platser.forEach((plats, index) => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerText = plats.namn;
+    div.onclick = () => {
+      currentPlats = index;
+      visaBanor();
+    };
+    app.appendChild(div);
+  });
+
+  const knapp = document.createElement('button');
+  knapp.className = 'button';
+  knapp.innerText = '➕ Lägg till plats';
+  knapp.onclick = laggTillPlats;
+  app.appendChild(knapp);
+}
+
+function laggTillPlats() {
+  const namn = prompt('Namn på ny plats:');
+  if (namn) {
+    data.platser.push({ namn: namn, banor: [] });
+    spara();
+    visaPlatser();
+  }
+}
+
+function visaBanor() {
+  const app = document.getElementById('app');
+  currentBana = null;
+  const plats = data.platser[currentPlats];
+  app.innerHTML = `<h2>${plats.namn}</h2><h3>Banor</h3>`;
+
+  plats.banor.forEach((bana, index) => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerText = bana.namn;
+    div.onclick = () => {
+      currentBana = index;
+      visaByggdelar();
+    };
+    app.appendChild(div);
+  });
+
+  const knapp = document.createElement('button');
+  knapp.className = 'button';
+  knapp.innerText = '➕ Lägg till bana';
+  knapp.onclick = laggTillBana;
+  app.appendChild(knapp);
+
+  const tillbaka = document.createElement('button');
+  tillbaka.className = 'button';
+  tillbaka.innerText = '⬅️ Tillbaka';
+  tillbaka.onclick = visaPlatser;
+  app.appendChild(tillbaka);
+}
+
+function laggTillBana() {
+  const namn = prompt('Namn på ny bana:');
+  if (namn) {
+    data.platser[currentPlats].banor.push({ namn: namn, byggdelar: [] });
+    spara();
+    visaBanor();
+  }
+}
+
+function visaByggdelar() {
+  const app = document.getElementById('app');
+  const plats = data.platser[currentPlats];
+  const bana = plats.banor[currentBana];
+  app.innerHTML = `<h2>${plats.namn} > ${bana.namn}</h2><h3>Byggdelar</h3>`;
+
+  bana.byggdelar.forEach((del, index) => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML = `<b>${del.typ}</b> - ${del.beskrivning}<br>Status: ${del.status}<br>Kommentar: ${del.kommentar || 'Inga'}`;
+    div.onclick = () => redigeraByggdel(index);
+    app.appendChild(div);
+  });
+
+  const knapp = document.createElement('button');
+  knapp.className = 'button';
+  knapp.innerText = '➕ Lägg till byggdel';
+  knapp.onclick = laggTillByggdel;
+  app.appendChild(knapp);
+
+  const tillbaka = document.createElement('button');
+  tillbaka.className = 'button';
+  tillbaka.innerText = '⬅️ Tillbaka';
+  tillbaka.onclick = visaBanor;
+  app.appendChild(tillbaka);
+}
+
+function laggTillByggdel() {
+  const typ = prompt('Typ (Plattform eller Hinder):');
+  const beskrivning = prompt('Beskrivning (ex: "Mellan plattform 1 och 2, 6 meter långt"):');
+  if (typ && beskrivning) {
+    data.platser[currentPlats].banor[currentBana].byggdelar.push({ typ, beskrivning, status: 'Ej påbörjad', kommentar: '' });
+    spara();
+    visaByggdelar();
+  }
+}
+
+function redigeraByggdel(index) {
+  const byggdel = data.platser[currentPlats].banor[currentBana].byggdelar[index];
+  const nyStatus = prompt('Ny status (Ej påbörjad, Påbörjad, Klar):', byggdel.status);
+  const nyKommentar = prompt('Ny kommentar:', byggdel.kommentar);
+
+  if (nyStatus) byggdel.status = nyStatus;
+  byggdel.kommentar = nyKommentar;
+  spara();
+  visaByggdelar();
+}
+
+// Starta appen
+visaPlatser();
+</script>
+
+</body>
+</html>
