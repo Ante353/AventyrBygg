@@ -5,70 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Äventyrsupplevelser Bygg</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f6f5ee;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background: #333;
-      color: white;
-      padding: 10px;
-      text-align: center;
-      font-size: 22px;
-    }
-    main {
-      padding: 20px;
-    }
-    .section {
-      margin-bottom: 30px;
-    }
-    .item {
-      background: white;
-      padding: 10px;
-      margin: 5px 0;
-      border: 2px solid #333;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    .button {
-      background: #333;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      margin-top: 10px;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    .button:hover {
-      background: #555;
-    }
-    .hidden {
-      display: none;
-    }
-    select, input, textarea {
-      width: 100%;
-      margin-top: 5px;
-      margin-bottom: 10px;
-      padding: 8px;
-      border: 2px solid #333;
-      border-radius: 8px;
-    }
+    body { font-family: Arial, sans-serif; background: #f6f5ee; margin: 0; padding: 0; }
+    header { background: #333; color: white; padding: 10px; text-align: center; font-size: 22px; }
+    main { padding: 20px; }
+    .section { margin-bottom: 30px; }
+    .item { background: white; padding: 10px; margin: 5px 0; border: 2px solid #333; border-radius: 8px; cursor: pointer; }
+    .button { background: #333; color: white; border: none; padding: 10px 15px; margin-top: 10px; border-radius: 8px; cursor: pointer; }
+    .button:hover { background: #555; }
+    .hidden { display: none; }
+    input, select, textarea { width: 100%; margin-top: 5px; margin-bottom: 10px; padding: 8px; border: 2px solid #333; border-radius: 8px; }
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10; }
+    .modal-content { background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; }
   </style>
 </head>
 <body>
 
 <header>Äventyrsupplevelser Bygg</header>
+<main id="app"></main>
 
-<main id="app">
-  <!-- Dynamiskt innehåll här -->
-</main>
+<div id="modal" class="modal hidden">
+  <div class="modal-content" id="modal-content"></div>
+</div>
 
 <script>
 let data = JSON.parse(localStorage.getItem('aventyrsBygg')) || { platser: [] };
 let currentPlats = null;
 let currentBana = null;
+const hinderLista = ["Indianabro", "Rep med tampar", "Kryssrep med gårep"];
 
 function spara() {
   localStorage.setItem('aventyrsBygg', JSON.stringify(data));
@@ -79,55 +42,41 @@ function visaPlatser() {
   currentPlats = null;
   currentBana = null;
   app.innerHTML = '<h2>Platser</h2>';
-
   data.platser.forEach((plats, index) => {
     const div = document.createElement('div');
     div.className = 'item';
     div.innerText = plats.namn;
-    div.onclick = () => {
-      currentPlats = index;
-      visaBanor();
-    };
+    div.onclick = () => { currentPlats = index; visaBanor(); };
     app.appendChild(div);
   });
-
   const knapp = document.createElement('button');
   knapp.className = 'button';
   knapp.innerText = '➕ Lägg till plats';
-  knapp.onclick = laggTillPlats;
+  knapp.onclick = () => visaModal('Namn på ny plats', (namn) => {
+    if (namn) {
+      data.platser.push({ namn: namn, banor: [] });
+      spara();
+      visaPlatser();
+    }
+  });
   app.appendChild(knapp);
-}
-
-function laggTillPlats() {
-  const namn = prompt('Namn på ny plats:');
-  if (namn) {
-    data.platser.push({ namn: namn, banor: [] });
-    spara();
-    visaPlatser();
-  }
 }
 
 function visaBanor() {
   const app = document.getElementById('app');
-  currentBana = null;
   const plats = data.platser[currentPlats];
   app.innerHTML = `<h2>${plats.namn}</h2><h3>Banor</h3>`;
-
   plats.banor.forEach((bana, index) => {
     const div = document.createElement('div');
     div.className = 'item';
     div.innerText = bana.namn;
-    div.onclick = () => {
-      currentBana = index;
-      visaByggdelar();
-    };
+    div.onclick = () => { currentBana = index; visaByggdelar(); };
     app.appendChild(div);
   });
-
   const knapp = document.createElement('button');
   knapp.className = 'button';
   knapp.innerText = '➕ Lägg till bana';
-  knapp.onclick = laggTillBana;
+  knapp.onclick = skapaNyBana;
   app.appendChild(knapp);
 
   const tillbaka = document.createElement('button');
@@ -137,35 +86,17 @@ function visaBanor() {
   app.appendChild(tillbaka);
 }
 
-function laggTillBana() {
-  const namn = prompt('Namn på ny bana:');
-  if (namn) {
-    data.platser[currentPlats].banor.push({ namn: namn, byggdelar: [] });
-    spara();
-    visaBanor();
-  }
-}
-
 function visaByggdelar() {
   const app = document.getElementById('app');
   const plats = data.platser[currentPlats];
   const bana = plats.banor[currentBana];
   app.innerHTML = `<h2>${plats.namn} > ${bana.namn}</h2><h3>Byggdelar</h3>`;
-
-  bana.byggdelar.forEach((del, index) => {
+  bana.byggdelar.forEach((del) => {
     const div = document.createElement('div');
     div.className = 'item';
-    div.innerHTML = `<b>${del.typ}</b> - ${del.beskrivning}<br>Status: ${del.status}<br>Kommentar: ${del.kommentar || 'Inga'}`;
-    div.onclick = () => redigeraByggdel(index);
+    div.innerHTML = `<b>${del.typ}</b> - ${del.info} (${del.extra ? del.extra : ''})`;
     app.appendChild(div);
   });
-
-  const knapp = document.createElement('button');
-  knapp.className = 'button';
-  knapp.innerText = '➕ Lägg till byggdel';
-  knapp.onclick = laggTillByggdel;
-  app.appendChild(knapp);
-
   const tillbaka = document.createElement('button');
   tillbaka.className = 'button';
   tillbaka.innerText = '⬅️ Tillbaka';
@@ -173,28 +104,126 @@ function visaByggdelar() {
   app.appendChild(tillbaka);
 }
 
-function laggTillByggdel() {
-  const typ = prompt('Typ (Plattform eller Hinder):');
-  const beskrivning = prompt('Beskrivning (ex: "Mellan plattform 1 och 2, 6 meter långt"):');
-  if (typ && beskrivning) {
-    data.platser[currentPlats].banor[currentBana].byggdelar.push({ typ, beskrivning, status: 'Ej påbörjad', kommentar: '' });
-    spara();
-    visaByggdelar();
-  }
+function skapaNyBana() {
+  visaModal('Namn på ny bana', (namn) => {
+    if (namn) {
+      data.platser[currentPlats].banor.push({ namn: namn, byggdelar: [] });
+      currentBana = data.platser[currentPlats].banor.length - 1;
+      spara();
+      skapaByggdel();
+    }
+  });
 }
 
-function redigeraByggdel(index) {
-  const byggdel = data.platser[currentPlats].banor[currentBana].byggdelar[index];
-  const nyStatus = prompt('Ny status (Ej påbörjad, Påbörjad, Klar):', byggdel.status);
-  const nyKommentar = prompt('Ny kommentar:', byggdel.kommentar);
+function skapaByggdel() {
+  visaValAlternativ();
+}
 
-  if (nyStatus) byggdel.status = nyStatus;
-  byggdel.kommentar = nyKommentar;
+function visaValAlternativ() {
+  const content = `
+    <h3>Vad vill du lägga till?</h3>
+    <button class="button" onclick="valPlattform()">Plattform</button>
+    <button class="button" onclick="valHinder()">Hinder</button>
+    <button class="button" onclick="valLinbana()">Linbana</button>
+    <button class="button" onclick="valSlut()">Slut</button>
+    <button class="button" onclick="stangModal()">Avbryt</button>
+  `;
+  document.getElementById('modal-content').innerHTML = content;
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function valPlattform() {
+  const content = `
+    <h3>Höjd på plattform? (meter) (frivilligt)</h3>
+    <input type="text" id="hojd" placeholder="Ex: 7">
+    <button class="button" onclick="laggTillPlattform()">Spara Plattform</button>
+    <button class="button" onclick="stangModal()">Avbryt</button>
+  `;
+  document.getElementById('modal-content').innerHTML = content;
+}
+
+function laggTillPlattform() {
+  const hojd = document.getElementById('hojd').value.trim();
+  data.platser[currentPlats].banor[currentBana].byggdelar.push({ typ: "Plattform", info: hojd ? `${hojd} meter höjd` : "Ingen höjd angiven" });
   spara();
-  visaByggdelar();
+  skapaByggdel();
 }
 
-// Starta appen
+function valHinder() {
+  const content = `
+    <h3>Längd på hinder (meter)</h3>
+    <input type="number" id="langd" placeholder="Ex: 6">
+    <h3>Välj eller skriv hinder</h3>
+    <input list="hinder" id="hindertext" placeholder="Ex: Indianabro">
+    <datalist id="hinder">
+      ${hinderLista.map(h => `<option value="${h}">`).join('')}
+    </datalist>
+    <button class="button" onclick="laggTillHinder()">Spara Hinder</button>
+    <button class="button" onclick="stangModal()">Avbryt</button>
+  `;
+  document.getElementById('modal-content').innerHTML = content;
+}
+
+function laggTillHinder() {
+  const langd = document.getElementById('langd').value.trim();
+  const hindertext = document.getElementById('hindertext').value.trim();
+  if (!langd || !hindertext) {
+    alert('Fyll i både längd och hinder!');
+    return;
+  }
+  data.platser[currentPlats].banor[currentBana].byggdelar.push({ typ: "Hinder", info: `${langd} meter`, extra: hindertext });
+  spara();
+  skapaByggdel();
+}
+
+function valLinbana() {
+  const content = `
+    <h3>Längd på linbana (meter)</h3>
+    <input type="number" id="linlangd" placeholder="Ex: 30">
+    <button class="button" onclick="laggTillLinbana()">Spara Linbana</button>
+    <button class="button" onclick="stangModal()">Avbryt</button>
+  `;
+  document.getElementById('modal-content').innerHTML = content;
+}
+
+function laggTillLinbana() {
+  const linlangd = document.getElementById('linlangd').value.trim();
+  if (!linlangd) {
+    alert('Fyll i längden på linbanan!');
+    return;
+  }
+  data.platser[currentPlats].banor[currentBana].byggdelar.push({ typ: "Linbana", info: `${linlangd} meter` });
+  spara();
+  skapaByggdel();
+}
+
+function valSlut() {
+  stangModal();
+  visaBanor();
+}
+
+function visaModal(fragetext, callback) {
+  const content = `
+    <h3>${fragetext}</h3>
+    <input type="text" id="modal-input">
+    <button class="button" onclick="skickaModal('${callback.name}')">Spara</button>
+    <button class="button" onclick="stangModal()">Avbryt</button>
+  `;
+  document.getElementById('modal-content').innerHTML = content;
+  document.getElementById('modal').classList.remove('hidden');
+  window.modalCallback = callback;
+}
+
+function skickaModal(callbackName) {
+  const input = document.getElementById('modal-input').value.trim();
+  stangModal();
+  window[callbackName](input);
+}
+
+function stangModal() {
+  document.getElementById('modal').classList.add('hidden');
+}
+
 visaPlatser();
 </script>
 
