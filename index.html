@@ -8,14 +8,14 @@
     body { font-family: Arial, sans-serif; background: #f6f5ee; margin: 0; padding: 0; }
     header { background: #333; color: white; padding: 10px; text-align: center; font-size: 22px; }
     main { padding: 20px; }
-    .section { margin-bottom: 30px; }
     .item { background: white; padding: 10px; margin: 5px 0; border: 2px solid #333; border-radius: 8px; cursor: pointer; }
     .button { background: #333; color: white; border: none; padding: 10px 15px; margin-top: 10px; border-radius: 8px; cursor: pointer; }
     .button:hover { background: #555; }
     input, select { width: 100%; margin-top: 5px; margin-bottom: 10px; padding: 8px; border: 2px solid #333; border-radius: 8px; }
     .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10; }
-    .modal-content { background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; }
+    .modal-content { background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; max-height: 90vh; overflow-y: auto; }
     .hidden { display: none; }
+    .byggdel { border: 1px solid #999; padding: 5px; margin: 5px 0; border-radius: 6px; background: #fafafa; }
   </style>
 </head>
 <body>
@@ -31,6 +31,7 @@
 let data = JSON.parse(localStorage.getItem('aventyrsBygg')) || { platser: [] };
 let currentPlats = null;
 let currentBana = null;
+let tillfalligaByggdelar = [];
 const hinderLista = ["Indianabro", "Rep med tampar", "Kryssrep med gårep"];
 
 function spara() {
@@ -42,7 +43,6 @@ function visaPlatser() {
   currentPlats = null;
   currentBana = null;
   app.innerHTML = '<h2>Platser</h2>';
-
   data.platser.forEach((plats, index) => {
     const div = document.createElement('div');
     div.className = 'item';
@@ -50,7 +50,6 @@ function visaPlatser() {
     div.onclick = () => { currentPlats = index; visaBanor(); };
     app.appendChild(div);
   });
-
   const knapp = document.createElement('button');
   knapp.className = 'button';
   knapp.innerText = '➕ Lägg till plats';
@@ -81,7 +80,6 @@ function visaBanor() {
   const app = document.getElementById('app');
   const plats = data.platser[currentPlats];
   app.innerHTML = `<h2>${plats.namn}</h2><h3>Banor</h3>`;
-
   plats.banor.forEach((bana, index) => {
     const div = document.createElement('div');
     div.className = 'item';
@@ -89,7 +87,6 @@ function visaBanor() {
     div.onclick = () => { currentBana = index; visaByggdelar(); };
     app.appendChild(div);
   });
-
   const knapp = document.createElement('button');
   knapp.className = 'button';
   knapp.innerText = '➕ Lägg till bana';
@@ -104,23 +101,88 @@ function visaBanor() {
 }
 
 function skapaBana() {
+  tillfalligaByggdelar = [];
   visaModal(`
     <h3>Ny bana</h3>
     <input id="banaNamn" placeholder="Namn på bana">
-    <button class="button" onclick="sparaBana()">Spara</button>
+    <div id="byggdelsLista"></div>
+    <button class="button" onclick="laggTill('plattform')">Plattform</button>
+    <button class="button" onclick="laggTill('hinder')">Hinder</button>
+    <button class="button" onclick="laggTill('linbana')">Linbana</button>
+    <button class="button" onclick="sparaHelBana()">Spara bana</button>
     <button class="button" onclick="stangModal()">Avbryt</button>
   `);
 }
 
-function sparaBana() {
-  const namn = document.getElementById('banaNamn').value.trim();
-  if (namn) {
-    data.platser[currentPlats].banor.push({ namn: namn, byggdelar: [] });
-    spara();
-    stangModal();
-    currentBana = data.platser[currentPlats].banor.length - 1;
-    skapaByggdel();
+function laggTill(typ) {
+  let html = '';
+  if (typ === 'plattform') {
+    html = `
+      <div class="byggdel"><b>Plattform</b><br>
+      Höjd (meter, valfritt): <input type="text" class="inputHojd"></div>
+    `;
+    tillfalligaByggdelar.push({ typ: "Plattform", info: "" });
   }
+  if (typ === 'hinder') {
+    html = `
+      <div class="byggdel"><b>Hinder</b><br>
+      Längd (meter): <input type="number" class="inputLangd"><br>
+      Typ av hinder: <input list="hinderList" class="inputHinder">
+      <datalist id="hinderList">
+        ${hinderLista.map(h => `<option value="${h}">`).join('')}
+      </datalist></div>
+    `;
+    tillfalligaByggdelar.push({ typ: "Hinder", info: "", extra: "" });
+  }
+  if (typ === 'linbana') {
+    html = `
+      <div class="byggdel"><b>Linbana</b><br>
+      Längd (meter): <input type="number" class="inputLinbana"></div>
+    `;
+    tillfalligaByggdelar.push({ typ: "Linbana", info: "" });
+  }
+  document.getElementById('byggdelsLista').innerHTML += html;
+}
+
+function sparaHelBana() {
+  const namn = document.getElementById('banaNamn').value.trim();
+  if (!namn) {
+    alert('Du måste skriva namn på banan!');
+    return;
+  }
+
+  const byggdelElements = document.getElementById('byggdelsLista').querySelectorAll('.byggdel');
+  const byggdelar = [];
+
+  byggdelElements.forEach((element, index) => {
+    const typ = tillfalligaByggdelar[index].typ;
+    if (typ === "Plattform") {
+      const hojd = element.querySelector('.inputHojd').value.trim();
+      byggdelar.push({ typ: "Plattform", info: hojd ? `${hojd} meter höjd` : "Ingen höjd angiven" });
+    }
+    if (typ === "Hinder") {
+      const langd = element.querySelector('.inputLangd').value.trim();
+      const hinder = element.querySelector('.inputHinder').value.trim();
+      if (!langd || !hinder) {
+        alert('Fyll i längd och hinder på alla hinder!');
+        return;
+      }
+      byggdelar.push({ typ: "Hinder", info: `${langd} meter`, extra: hinder });
+    }
+    if (typ === "Linbana") {
+      const langd = element.querySelector('.inputLinbana').value.trim();
+      if (!langd) {
+        alert('Fyll i längd på alla linbanor!');
+        return;
+      }
+      byggdelar.push({ typ: "Linbana", info: `${langd} meter` });
+    }
+  });
+
+  data.platser[currentPlats].banor.push({ namn: namn, byggdelar: byggdelar });
+  spara();
+  stangModal();
+  visaBanor();
 }
 
 function visaByggdelar() {
@@ -141,84 +203,6 @@ function visaByggdelar() {
   tillbaka.innerText = '⬅️ Tillbaka';
   tillbaka.onclick = visaBanor;
   app.appendChild(tillbaka);
-}
-
-function skapaByggdel() {
-  visaModal(`
-    <h3>Vad vill du lägga till?</h3>
-    <button class="button" onclick="nyPlattform()">Plattform</button>
-    <button class="button" onclick="nyHinder()">Hinder</button>
-    <button class="button" onclick="nyLinbana()">Linbana</button>
-    <button class="button" onclick="slutBana()">Slut</button>
-    <button class="button" onclick="stangModal()">Avbryt</button>
-  `);
-}
-
-function nyPlattform() {
-  visaModal(`
-    <h3>Höjd på plattform (meter) (valfritt)</h3>
-    <input id="hojd" placeholder="Ex: 6">
-    <button class="button" onclick="sparaPlattform()">Spara Plattform</button>
-    <button class="button" onclick="stangModal()">Avbryt</button>
-  `);
-}
-
-function sparaPlattform() {
-  const hojd = document.getElementById('hojd').value.trim();
-  data.platser[currentPlats].banor[currentBana].byggdelar.push({ typ: "Plattform", info: hojd ? `${hojd} meter höjd` : "Ingen höjd angiven" });
-  spara();
-  skapaByggdel();
-}
-
-function nyHinder() {
-  visaModal(`
-    <h3>Längd på hinder (meter)</h3>
-    <input id="langd" type="number" placeholder="Ex: 5">
-    <h3>Välj eller skriv hinder</h3>
-    <input id="hindertext" list="hinderLista" placeholder="Ex: Indianabro">
-    <datalist id="hinderLista">
-      ${hinderLista.map(h => `<option value="${h}">`).join('')}
-    </datalist>
-    <button class="button" onclick="sparaHinder()">Spara Hinder</button>
-    <button class="button" onclick="stangModal()">Avbryt</button>
-  `);
-}
-
-function sparaHinder() {
-  const langd = document.getElementById('langd').value.trim();
-  const hinder = document.getElementById('hindertext').value.trim();
-  if (!langd || !hinder) {
-    alert('Fyll i både längd och hinder!');
-    return;
-  }
-  data.platser[currentPlats].banor[currentBana].byggdelar.push({ typ: "Hinder", info: `${langd} meter`, extra: hinder });
-  spara();
-  skapaByggdel();
-}
-
-function nyLinbana() {
-  visaModal(`
-    <h3>Längd på linbana (meter)</h3>
-    <input id="linlangd" type="number" placeholder="Ex: 30">
-    <button class="button" onclick="sparaLinbana()">Spara Linbana</button>
-    <button class="button" onclick="stangModal()">Avbryt</button>
-  `);
-}
-
-function sparaLinbana() {
-  const linlangd = document.getElementById('linlangd').value.trim();
-  if (!linlangd) {
-    alert('Fyll i längd!');
-    return;
-  }
-  data.platser[currentPlats].banor[currentBana].byggdelar.push({ typ: "Linbana", info: `${linlangd} meter` });
-  spara();
-  skapaByggdel();
-}
-
-function slutBana() {
-  stangModal();
-  visaBanor();
 }
 
 function visaModal(html) {
